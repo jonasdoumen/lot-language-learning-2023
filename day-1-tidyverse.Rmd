@@ -54,6 +54,7 @@ Everything you typically want to do in statistical programming uses **functions*
 
 ```{r}
 mean(eng_ws$production)
+nrow(eng_ws)
 ```
 
 We're going to call this **applying** the function `mean` to the variable `production` within the dataframe `eng_ws`.
@@ -64,7 +65,7 @@ Pipes are a way to write strings of functions more easily. They bring the first 
 eng_ws$production |>
   mean()
 ```
-
+The pipe takes the function name and puts it in the back, this is handy if we want to apply multiple fns, they'll get tricky to read
 The cool thing about pipes is that we can chain together many functions, applying them in sequence. That lets us read them out in the right order. 
 
 If we want to round the mean production score, we would normally have to write `round(mean(eng_ws$production))`. The computer evaluates this expression from the inside out, which can get tricky to read. With pipes, we can rewrite this expression as:
@@ -86,6 +87,9 @@ EXERCISE: rewrite this expression using a pipe chain.
 length(unique(eng_ws$ethnicity))
 
 # your version goes here:
+eng_ws$ethnicity |>
+  unique() |>
+  length()
 
 ```
 
@@ -107,7 +111,10 @@ So if you wanted to look only at children who are between 16 and 30 months old (
 
 ```{r}
 eng_ws %>%
-  filter(age >= 16, age <= 30)
+  filter(age >= 24, age <= 30)
+
+eng_ws |>
+  filter(birth_order == "Second")
 ```
 
 We're using pipes with functions over data frames here. The way this works is that:
@@ -128,7 +135,7 @@ Also notice that within dplyr verbs, you don't have to do that clunky `eng_ws$ag
 eng_ws |>
   mutate(age_group = cut(age, c(12, 18,24,30,36)))
 ```
-
+the eng_ws variable is not overwritten, if you wanted to do that, you say 
 ## `group_by` and `summarise`
 
 We typically describe datasets at the level of some grouping variable (e.g., subjects, age groups, etc.). We need two verbs to get a summary at a group level: `group_by` and `summarise` (kiwi spelling). Grouping alone doesn't do much.
@@ -170,6 +177,10 @@ EXERCISE: You try it! Create a data frame containing mean production scores for 
 ```{r}
 # <- eng_ws_sex <- eng_ws |>
 #   ...
+eng_ws_sex <- eng_ws |>
+  group_by(sex, age) |>
+  summarise(production = mean(production), 
+            n = n())
 ```
 
 # Plotting
@@ -187,7 +198,7 @@ For example, let's plot our age summary data.
 ```{r}
 ggplot(eng_ws_age, 
        aes(x = age, y = production)) + 
-  geom_point()
+  geom_point() + geom_smooth()
 ```
 
 You can see that we've mapped `age` to the `x` coordinate, `production` to the `y` coordinate, and then we have instantiated this mapping with points (via `geom_point()`).
@@ -205,6 +216,9 @@ EXERCISE: Plot the `eng_ws_sex` summary data frame you created, using color to r
 
 ```{r}
 # ...
+ggplot(eng_ws_sex, 
+       aes(x = age, y = production, color = sex)) + 
+  geom_point()
 ```
 
 # Joining data frames
@@ -242,9 +256,11 @@ If you got through all of this material and it was easy, try sprucing up the gra
 - making the points proportional to number of observations (`size` in the `aes` statement)
 - adding standard deviation error bars using `geom_pointrange` (this one will require modifying the dataframe to add SDs)
 
+
 ```{r}
 # ...
+ggplot(eng_ws_sex, 
+       aes(x = age, y = production, color = sex, size = production)) + xlab("age") + ylab("production") + geom_point() + xlim(0,max(eng_ws_sex$age)) + ylim(0,max(eng_ws_sex$production))
 ```
-
 
 Nice work!
