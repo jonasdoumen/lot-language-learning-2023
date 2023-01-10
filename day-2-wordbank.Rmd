@@ -31,8 +31,8 @@ In practice, almost all the functions in `wordbankr` (and `childesr` and `peekba
 Let's take a look at the `instruments` table that tells us about the different MB-CDI variants in Wordbank. 
 
 ```{r}
-intruments <- get_instruments()
-intruments
+instruments <- get_instruments()
+instruments
 ```
 
 Here you can see all the different languages and instruments. That can help us figure out which data we can get. 
@@ -57,6 +57,10 @@ admins_eng_ws |>
 EXERCISE: Try choosing another instrument in a different language and pulling data from it, then examining the age distribution.
 
 ```{r}
+admins_dutch_ws <- get_administration_data(language = "Dutch", form = "WS", include_demographic_info = TRUE)
+n_distinct(admins_dutch_ws$data_id)
+admins_dutch_ws |> 
+  count(age)
 # ...
 ```
 
@@ -65,7 +69,7 @@ EXERCISE: Try choosing another instrument in a different language and pulling da
 Now we can make our canonical plot of the variability of individual children's vocabularies. Note that we are using `geom_jitter`, which jitters points around so they don't all end up on top of one another. The arguments to the function (`alpha` and `size`) make the points smaller and semi-transparent, so they all can be seen on one plot. 
 
 ```{r}
-ggplot(admins_eng_ws, aes(x = age, y = production)) +
+ggplot(admins_dutch_ws, aes(x = age, y = production)) +
   geom_jitter(alpha = .1, size = 0.5, width = .3, height = 0) +
   geom_smooth()
 ```
@@ -77,6 +81,7 @@ Hint: start by pasting the code from yesterday.
 
 ```{r}
 # ...
+
 ```
 
 # Digging into item-level data
@@ -87,13 +92,13 @@ We'll start by looking at the English items.
 
 ```{r}
 items_eng_ws <- get_item_data(language = "English (American)", form = "WS")
-head(items_eng_ws)
+head(items_dutch_ws)
 ```
 
 Note that there are different kinds of items on CDI forms. There's the word list, but there are also items about how children use words, verbal and nominal morphology, word combination (whether children are combining) and items on morphysyntactic complexity of utterances. 
 
 ```{r}
-items_eng_ws |> distinct(item_kind)
+items_dutch_ws |> distinct(item_kind)
 ```
 What's more, within the words, there are a whole bunch of different categories of word (marked this way on the form to make it easier for parents to think about different words). 
 
@@ -135,7 +140,7 @@ dog_cat_means <- dog_cat_data |>
 
 ggplot(dog_cat_means, aes(x = age, y = produces, col = item_definition)) +
   geom_point() + 
-  geom_smooth() 
+  geom_smooth() + facet_wrap(~sex)
 ```
 
 
@@ -146,7 +151,7 @@ Now we have everything we need to replicate Bates and Goodman's observed correla
 First, get the complexity items. 
 
 ```{r}
-complexity_items <- filter(items_eng_ws, item_kind == "complexity") 
+complexity_items <- filter(items_eng_ws, item_kind == "complexity")
 head(complexity_items)
 ```
 Next get the instrument data for these specific items (note that we are using `item_id` to select only the complexity items), for all children. This is a lot of data! 
@@ -155,7 +160,7 @@ Next get the instrument data for these specific items (note that we are using `i
 complexity_instrument_data <- get_instrument_data(language = "English (American)", 
                                                   form = "WS", 
                                                   items = complexity_items$item_id)
-head(complexity_instrument_data)                                          
+head(complexity_instrument_data)                                   
 ```
 
 For each item, parents checked whether the child's response was more like the `simple` or `complex` model sentence. 
@@ -170,6 +175,10 @@ Hint: `data_id` indicates a unique child.
 # complete this pipe chain:
 # complexity_means <- complexity_instrument_data |>
 #   ...
+complexity_means <- complexity_instrument_data |>
+  group_by(data_id) |>
+  summarise(complexity_score = sum(value == "complex"))
+  
 ```
 
 EXERCISE: now join `complexity_means` and `admins_eng_ws` to create a single dataframe.
@@ -177,19 +186,43 @@ EXERCISE: now join `complexity_means` and `admins_eng_ws` to create a single dat
 ```{r}
 # complete this command:
 # admins_eng_ws <- ...
+admins_eng_ws <- left_join(admins_eng_ws, complexity_means)
 ```
 
 Now we can plot the relationship described by Bates and Goodman!
+
+
 
 ```{r}
 ggplot(admins_eng_ws, aes(x = production, y = complexity_score)) + 
   geom_jitter(alpha = .1, size = .5, width = 0, height = .3) + 
   geom_smooth()
 ```
+```{r}
+items_eng_ws <- get_item_data(language = "English (American)", form = "WS")
+complexity_items <- filter(items_eng_ws, item_kind == "complexity")
+head(complexity_items)
+complexity_instrument_data <- get_instrument_data(language = "English (American)", 
+                                                  form = "WS", 
+                                                  items = complexity_items$item_id)
+
+complexity_means <- complexity_instrument_data |>
+  group_by(data_id) |>
+  summarise(complexity_score = sum(value == "complex"))
+head(complexity_means)
+admins_eng_ws <- get_administration_data(language = "English (American)", form = "WS")
+head(admins_eng_ws)
+admins_eng_ws <- left_join(admins_eng_ws, complexity_means)
+ggplot(admins_eng_ws, aes(x = production, y = complexity_score)) + 
+  geom_jitter(alpha = .1, size = .5, width = 0, height = .3) + 
+  geom_smooth()
+```
+
+
 We can even quantify the strength of this relationship statistically!
 
 ```{r}
-cor.test(admins_eng_ws$production, admins_eng_ws$complexity_score)
+cor.test(admins_eng_ws$production^2, admins_eng_ws$complexity_score)
 ```
 
 # Challenge problem
@@ -197,5 +230,26 @@ cor.test(admins_eng_ws$production, admins_eng_ws$complexity_score)
 If you had no trouble doing the prior two exercises, try making the same figure as above, but this time compare to the total productive PREDICATE vocabulary, NOT the total vocabulary. 
 
 To do this, you will need to pull the instrument data for predicates and create the same kind of child-level score dataframe you did for complexity, with a variable called `predicate_score`. Let's see what you get!
+predicate_items <- items_eng_ws |> filter(lexical_category == "predicates")
 
 
+
+```{r}
+items_eng_ws <- get_item_data(language = "English (American)", form = "WS")
+pred_items <- filter(items_eng_ws, lexical_category == "predicate")
+head(complexity_items)
+complexity_instrument_data <- get_instrument_data(language = "English (American)", 
+                                                  form = "WS", 
+                                                  items = complexity_items$item_id)
+
+complexity_means <- complexity_instrument_data |>
+  group_by(data_id) |>
+  summarise(complexity_score = sum(value == "complex"))
+head(complexity_means)
+admins_eng_ws <- get_administration_data(language = "English (American)", form = "WS")
+head(admins_eng_ws)
+admins_eng_ws <- left_join(admins_eng_ws, complexity_means)
+ggplot(admins_eng_ws, aes(x = production, y = complexity_score)) + 
+  geom_jitter(alpha = .1, size = .5, width = 0, height = .3) + 
+  geom_smooth()
+```
