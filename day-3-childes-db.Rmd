@@ -82,12 +82,35 @@ EXERCISE: You can also get variants on an individual word. Let's use this exampl
 ```{r}
 dogs <- get_tokens(corpus = "Brown", role = "target_child", token = "*", stem = "dog")
 ```
+
+
 Now let's look use our group-by/summarize workflow to try and understand when the plural of dog emerges relative to the singular for each child.  Make a tibble showing the first age at which the words "dog" and "dogs" are used for each child.
+age of first sg dog vs age of first plural dog
+=> you want to show a graph with all the points where dog is produced, so x-axis is age, y-axis is jitter?
 
 Hint: `filter`, `group_by`, `summarise`!
 
 ```{r}
 # dogs ->
+#sg_dogs <- dogs |> filter(gloss =="dog")
+#pl_dogs <- dogs |> filter(gloss =="dogs")
+
+sg_dogs <- dogs |>
+  filter(part_of_speech == "n", gloss %in% c("doggie", "dog", "doggy")) |>
+  group_by(target_child_name) |>
+  summarise(min_age_sg = min(target_child_age))
+pl_dogs <- dogs |>
+  filter(part_of_speech == "n", gloss %in% c("doggies", "dogs")) |>
+  group_by(target_child_name) |>
+  summarise(min_age_pl = min(target_child_age))
+
+left_join(sg_dogs, pl_dogs) |>
+  mutate(delay = min_age_pl - min_age_sg)
+#
+dogs |>
+  filter(gloss %in% c ("dog", "dogs")) |>
+  group_by(target_child_name, gloss) |>
+  summarise(min_age = min(target_child_age))
 ```
 
 
@@ -115,25 +138,31 @@ EXERCISE: Using the speaker statistics table, plot MLU by child age, with color 
 
 In our final exercise, we'll replicate the general patterns of development for "and" and "or" found by Jasbi et al. (2022). 
 
-EXERCISE: use `get_tokens` to 1) get all instances of "and" and "or" spoken by either the child or the child's mother in the Brown corpus and 2) in a separate dataframe get ALL the tokens spoken by the child and the mother (you'll use this to normalize the counts so as to be able to compare transcripts of different sizes).
+EXERCISE: use `get_tokens` to 1) get all instances of "and" and "or" spoken by either the child or the child's mother in the Brown corpus and 2) in a separate dataframe get ALL the tokens spoken by the child and the mother (you'll use this to normalize the counts so as to be able to compare transcripts of different sizes). proportion_or: count_or/count_all_tokens
 
 ```{r}
-and_or_tokens <- get_tokens(..)
 
-all_tokens <- get_tokens(...)
+and_or_tokens <- get_tokens(corpus = "Brown", role = c("target_child", "Mother"), token = c("and", "or"))
+all_tokens <- get_tokens(corpus = "Brown", role = c("target_child", "Mother"), token = "*")
 ```
 
 Now summarise the total number of tokens of each word for each speaker and transcript, and create normalized counts.
 
 ```{r}
 and_or_counts <- and_or_tokens |>
+  group_by(speaker_id, transcript_id, speaker_role, target_child_age) |>
+  summarise(n_and_or = n())
+  
   # ...
   
 all_token_counts <- all_tokens |>
+  group_by(speaker_id, transcript_id, speaker_role, target_child_age) |>
+  summarise(n_all = n())
   # ...
 
 # now join and normalize and/or counts by total counts
-and_or_freqs <- left_join(...) 
+and_or_freqs <- left_join(and_or_counts, all_token_counts) |>
+  mutate(prop = n_and_or/n_all)
 ```
 
 Now let's plot the result:
