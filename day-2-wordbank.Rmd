@@ -230,26 +230,25 @@ cor.test(admins_eng_ws$production^2, admins_eng_ws$complexity_score)
 If you had no trouble doing the prior two exercises, try making the same figure as above, but this time compare to the total productive PREDICATE vocabulary, NOT the total vocabulary. 
 
 To do this, you will need to pull the instrument data for predicates and create the same kind of child-level score dataframe you did for complexity, with a variable called `predicate_score`. Let's see what you get!
-predicate_items <- items_eng_ws |> filter(lexical_category == "predicates")
 
 
 
 ```{r}
 items_eng_ws <- get_item_data(language = "English (American)", form = "WS")
-pred_items <- filter(items_eng_ws, lexical_category == "predicate")
-head(complexity_items)
-complexity_instrument_data <- get_instrument_data(language = "English (American)", 
+pred_items <- filter(items_eng_ws, lexical_category == "predicates")
+head(pred_items)
+pred_instrument_data <- get_instrument_data(language = "English (American)", 
                                                   form = "WS", 
-                                                  items = complexity_items$item_id)
+                                                  items = pred_items$item_id)
 
-complexity_means <- complexity_instrument_data |>
+pred_means <- pred_instrument_data |>
   group_by(data_id) |>
-  summarise(complexity_score = sum(value == "complex"))
-head(complexity_means)
+  summarise(predicate_score = sum(value == "produces"))
+head(pred_means)
 admins_eng_ws <- get_administration_data(language = "English (American)", form = "WS")
 head(admins_eng_ws)
-admins_eng_ws <- left_join(admins_eng_ws, complexity_means)
-ggplot(admins_eng_ws, aes(x = production, y = complexity_score)) + 
+admins_eng_ws <- left_join(admins_eng_ws, pred_means)
+ggplot(admins_eng_ws, aes(x = production, y = predicate_score)) + 
   geom_jitter(alpha = .1, size = .5, width = 0, height = .3) + 
   geom_smooth()
 ```
